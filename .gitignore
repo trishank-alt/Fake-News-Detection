@@ -1,0 +1,43 @@
+# IDE
+.idea/
+.vscode/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+.env.local
+
+# Data (large or generated)
+data/
+datasets/
+liar/
+*.tsv
+
+# Logs
+*.log
+
+# Build / cache
+dist/
+build/
+.cache/
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Node (only if ever used)
+node_modules/
+
+# Jupyter
+.ipynb_checkpoints/

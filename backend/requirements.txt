@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+nltk
+scikit-learn
+requests
+pytest
+pytest-cov
+coverage
+black
+flake8
