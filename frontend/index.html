@@ -1,28 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fake News Detector</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
 <div class="container">
 
-<h1>Automated Fake News Detection</h1>
+    <header>
+        <div class="logo-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+        </div>
+        <div>
+            <h1>Fake News Intelligence</h1>
+            <p class="subtitle">ML-powered credibility analysis</p>
+        </div>
+    </header>
 
-<textarea id="newsText" placeholder="Paste news article or claim here..."></textarea>
+    <div class="input-section">
+        <label for="newsText">News article or claim</label>
+        <textarea id="newsText" placeholder="Paste a news headline, article excerpt, or any claim to analyze..."></textarea>
+        <div class="input-footer">
+            <span id="charCount" class="char-count">0 characters</span>
+            <button id="analyzeBtn" onclick="checkNews()">
+                <span id="btnLabel">Analyze</span>
+                <svg id="btnIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+                <span id="spinner" class="spinner hidden"></span>
+            </button>
+        </div>
+    </div>
 
-<button onclick="checkNews()">Analyze</button>
+    <div id="errorBox" class="error-box hidden"></div>
 
-<div id="resultBox">
-    <p id="prediction"></p>
-    <p id="confidence"></p>
-</div>
+    <div id="resultBox" class="result-box hidden">
+
+        <!-- Verdict Banner -->
+        <div id="verdictBanner" class="verdict-banner">
+            <div class="verdict-icon" id="verdictIcon"></div>
+            <div class="verdict-text">
+                <span id="verdictLabel">Analyzing...</span>
+                <span id="isFakeTag" class="tag"></span>
+            </div>
+        </div>
+
+        <!-- Truth Score -->
+        <div class="score-section">
+            <div class="score-header">
+                <span class="metric-label">Truth Score</span>
+                <span id="truthScore" class="score-value">--%</span>
+            </div>
+            <div class="bar-track">
+                <div id="truthBar" class="bar-fill"></div>
+            </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="metrics-grid">
+
+            <div class="metric-card">
+                <span class="metric-label">Model Confidence</span>
+                <span id="confidence" class="metric-value">--</span>
+                <div class="mini-bar-track">
+                    <div id="confidenceBar" class="mini-bar"></div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <span class="metric-label">Emotional Intensity</span>
+                <span id="emotion" class="metric-value">--</span>
+                <div class="mini-bar-track">
+                    <div id="emotionBar" class="mini-bar"></div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <span class="metric-label">Suspicious Score</span>
+                <span id="suspicious" class="metric-value">--</span>
+                <div class="mini-bar-track">
+                    <div id="suspiciousBar" class="mini-bar bad"></div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <span class="metric-label">Verification Score</span>
+                <span id="verification" class="metric-value">--</span>
+                <div class="mini-bar-track">
+                    <div id="verificationBar" class="mini-bar good"></div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
 
 </div>
 
 <script src="script.js"></script>
-
 </body>
 </html>

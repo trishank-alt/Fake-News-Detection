@@ -4,60 +4,51 @@ import os
 import pickle
 import re
 import nltk
+import requests
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
 
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
+from nltk.sentiment import SentimentIntensityAnalyzer
 
-nltk.download('vader_lexicon')
 
-# Download stopwords (first time only)
+# -----------------------------
+# NLTK Setup
+# -----------------------------
 nltk.download("stopwords", quiet=True)
+nltk.download("vader_lexicon", quiet=True)
+
+STOP_WORDS = set(stopwords.words("english"))
+STEMMER = PorterStemmer()
+sia = SentimentIntensityAnalyzer()
 
 
-# Base directory
+# -----------------------------
+# Paths
+# -----------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_PATH = os.path.join(BASE_DIR, "model", "logreg.pkl")
 VECTORIZER_PATH = os.path.join(BASE_DIR, "model", "tfidf.pkl")
 
-
-# Load NLP resources
-STOP_WORDS = set(stopwords.words("english"))
-STEMMER = PorterStemmer()
+NEWS_API_KEY = "YOUR_KEY"   # <-- replace this
 
 
+# -----------------------------
 # Global model variables
+# -----------------------------
 model = None
 vectorizer = None
 
-from nltk.sentiment import SentimentIntensityAnalyzer
 
-sia = SentimentIntensityAnalyzer()
-
-def get_emotional_intensity(text):
-    scores = sia.polarity_scores(text)
-    return scores["compound"]  
-
-import requests
-
-NEWS_API_KEY = "YOUR_KEY"
-
-def verify_with_trusted_sources(text):
-    url = f"https://newsapi.org/v2/everything?q={text}&language=en&apiKey={NEWS_API_KEY}"
-    response = requests.get(url)
-    data = response.json()
-
-    if data.get("totalResults", 0) > 0:
-        return min(data["totalResults"] / 100, 1.0)  # normalize score
-    return 0.0
-
-# Preprocess function
+# -----------------------------
+# Utility Functions
+# -----------------------------
 def preprocess_text(text):
-
     text = text.lower()
     text = re.sub(r"http\S+|www\S+", "", text)
     text = re.sub(r"[^a-zA-Z\s]", "", text)
@@ -70,12 +61,55 @@ def preprocess_text(text):
     return " ".join(words)
 
 
-# Load trained model
+def get_emotional_intensity(text):
+    scores = sia.polarity_scores(text)
+    return scores["compound"]
+
+
+def verify_with_trusted_sources(text):
+    if NEWS_API_KEY == "YOUR_KEY":
+        return 0.0  # fail-safe if key not set
+
+    try:
+        url = f"https://newsapi.org/v2/everything?q={text}&language=en&apiKey={NEWS_API_KEY}"
+        response = requests.get(url)
+        data = response.json()
+
+        if data.get("totalResults", 0) > 0:
+            return min(data["totalResults"] / 100, 1.0)
+
+        return 0.0
+    except:
+        return 0.0
+
+
+def get_suspicious_score(text):
+    suspicious_words = [
+        "shocking", "breaking", "exposed", "truth revealed",
+        "you won't believe", "secret", "urgent", "alert"
+    ]
+
+    text_lower = text.lower()
+    score = 0
+
+    for word in suspicious_words:
+        if word in text_lower:
+            score += 0.1
+
+    # CAPS ratio
+    caps = sum(1 for c in text if c.isupper())
+    ratio = caps / max(len(text), 1)
+
+    if ratio > 0.3:
+        score += 0.2
+
+    return min(score, 1.0)
+
+
+# -----------------------------
+# Load Model
+# -----------------------------
 def load_model():
-
-    print("Looking for model at:", MODEL_PATH)
-    print("Looking for vectorizer at:", VECTORIZER_PATH)
-
     if not os.path.exists(MODEL_PATH):
         raise RuntimeError(f"Model not found: {MODEL_PATH}")
 
@@ -91,10 +125,11 @@ def load_model():
     return model, vectorizer
 
 
-# Lifespan handler (modern FastAPI startup/shutdown)
+# -----------------------------
+# Lifespan (startup)
+# -----------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-
     global model, vectorizer
 
     print("Starting server...")
@@ -109,13 +144,13 @@ async def lifespan(app: FastAPI):
     print("Shutting down server...")
 
 
-# FastAPI app
+# -----------------------------
+# FastAPI App
+# -----------------------------
 app = FastAPI(
     title="Fake News Detection API",
     lifespan=lifespan
 )
-
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -125,33 +160,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Input schema
+
+# -----------------------------
+# Schemas
+# -----------------------------
 class NewsInput(BaseModel):
     text: str
 
 
-# Output schema
 class Prediction(BaseModel):
     prediction: str
     confidence: float
     is_fake: bool
     emotional_intensity: float
     verification_score: float
+    suspicious_score: float
+    truth_score: float
 
 
-# Root endpoint
+# -----------------------------
+# Routes
+# -----------------------------
 @app.get("/")
 def root():
     return {"message": "Fake News Detection API Running"}
 
 
-# Health check
 @app.get("/health")
 def health():
     return {"status": "OK"}
 
 
-#Prediction endpoint
 @app.post("/predict", response_model=Prediction)
 def predict(news: NewsInput):
 
@@ -161,23 +200,36 @@ def predict(news: NewsInput):
     if not news.text.strip():
         raise HTTPException(400, "Empty input")
 
+    # Preprocess
     processed = preprocess_text(news.text)
-
     vec = vectorizer.transform([processed])
 
+    # Model prediction
     pred = model.predict(vec)[0]
     prob = model.predict_proba(vec)[0]
-
     confidence = float(prob[pred])
+
+    # Signals
     emotion = get_emotional_intensity(news.text)
     verification = verify_with_trusted_sources(news.text[:100])
+    suspicious = get_suspicious_score(news.text)
+
+    # Truth Score Calculation
+    truth_score = (
+        confidence
+        - (emotion * 0.3)
+        + (verification * 0.5)
+        - (suspicious * 0.4)
+    )
+
+    truth_score = max(0, min(truth_score, 1))
 
     return Prediction(
         prediction="Fake" if pred == 1 else "Real",
         confidence=confidence,
         is_fake=bool(pred == 1),
         emotional_intensity=emotion,
-        verification_score=verification
+        verification_score=verification,
+        suspicious_score=suspicious,
+        truth_score=truth_score
     )
-
-
