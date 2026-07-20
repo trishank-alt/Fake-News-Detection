@@ -72,13 +72,20 @@ pip install -r requirements.txt
 
 ## 📊 Dataset
 
-Datasets are **not included** in this repository.
+The datasets used for training are **not included** in this repository due to their size and licensing restrictions.
 
-Download them from:
+Please download them from the following sources:
 
-* (Add your dataset source here)
+- **ISOT Fake News Dataset**  
+  https://www.kaggle.com/datasets/emineyetm/fake-news-detection-datasets
 
-Place them inside:
+- **FakeNewsNet (Political News Dataset)**  
+  https://www.kaggle.com/datasets/gevaran/political-news-dataset
+
+- **LIAR Dataset**  
+  https://www.kaggle.com/datasets/doanquanvietnamca/liar-dataset/data
+
+After downloading, place the dataset files in the appropriate directory as described in the project setup instructions.
 
 ```
 /data
